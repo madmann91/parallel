@@ -12,14 +12,14 @@ void shell_sort(Iterator begin, Iterator end, Cmp cmp = Cmp()) {
     for (auto g : gaps) {
         auto first = begin + g;
         for (auto it1 = first; it1 < end; ++it1) {
-            auto tmp = *it1;
+            auto tmp = std::move(*it1);
 
             auto it2 = it1;
             for (; it2 >= first && cmp(tmp, *(it2 - g)); it2 -= g) {
-                *it2 = *(it2 - g);
+                *it2 = std::move(*(it2 - g));
             }
 
-            *it2 = tmp;
+            *it2 = std::move(tmp);
         } 
     }
 }

@@ -4,8 +4,25 @@
 
 #include <tbb/tbb.h>
 
+namespace par {
 #include "block_swap.h"
 #include "parallel_sort.h"
+}
+
+using namespace par;
+struct Thingy {
+    int value;
+    Thingy() {}
+    Thingy(int i) : value(i) {}
+    Thingy& operator = (int i) { value = i; return *this; }
+    bool operator < (const Thingy& other) const { return value > other.value; }
+    bool operator == (const Thingy& other) const { return value == other.value; }
+};
+
+std::ostream& operator << (std::ostream& os, const Thingy& thingy) {
+    os << thingy.value;
+    return os;
+}
 
 template <typename Iterator>
 Iterator find_difference(Iterator begin, Iterator end) {
@@ -16,7 +33,7 @@ Iterator find_difference(Iterator begin, Iterator end) {
 }
 
 int main(int argc, char** argv) {
-    std::vector<int> values(1000000);
+    std::vector<Thingy> values(1000000);
     for (auto& v : values) v = rand();
 
     std::cout << "Testing..." << std::endl;
@@ -65,6 +82,4 @@ int main(int argc, char** argv) {
     block_swap(p.begin(), p.end() - 5, p.end());
     for (auto i : p) std::cout << i << " ";
     std::cout << std::endl;
-
-    return 0;
 }

@@ -1,15 +1,10 @@
 #include <iostream>
 #include <vector>
 #include <chrono>
+#include <functional>
 
-#include <tbb/tbb.h>
-#include "parallel_stable_sort.h"
-
-namespace par {
-#include "block_swap.h"
-#include "parallel_sort.h"
-}
-using namespace par;
+#include "inplace_merge_sort.h"
+#include "bitonic_sort.h"
 
 struct Thingy {
     int value;
@@ -33,95 +28,63 @@ Iterator find_difference(Iterator begin, Iterator end) {
     return end;
 }
 
-template <typename Iterator, typename Cmp, bool Up = true>
-void bitonic_merge(Iterator begin, Iterator end, Cmp cmp) {
-    auto d = end - begin;
-    if (d <= 1) return;
+template <typename T> using container_type = std::vector<T>;
+template <typename T> using iterator_type = typename container_type<T>::iterator;
+template <typename T> using comparator = std::less<T>;
+template <typename T> using sort_fn = std::function<void (iterator_type<T>, iterator_type<T>, comparator<T>)>;
 
-    // Compute the greatest power of two less than d
-    auto n = 1 << (31 - __builtin_clz((unsigned int)d));
-    n = n >= d ? n >> 1 : n;
-    auto k = d - n;
-    auto middle = begin + n;
-    auto it1 = begin;
-    auto it2 = middle;
-    for (int i = 0; i < k; i++) {
-        if (Up ^ cmp(*it1, *it2)) std::iter_swap(it1, it2);
-        it1++, it2++;
+template <typename T>
+void check_sort(const std::string& name, sort_fn<T> sort, iterator_type<T> begin, iterator_type<T> end, comparator<T> cmp = comparator<T>()) {
+    std::vector<T> tmp_values(begin, end);
+    sort(tmp_values.begin(), tmp_values.end(), cmp);
+    auto diff = find_difference(tmp_values.begin(), tmp_values.end());
+    if (diff != tmp_values.end()) {
+        std::cerr << name << " is incorrect." << std::endl;
+        std::cerr << "first few elements: ";
+        auto it = tmp_values.begin();
+        for (int i = 0; i < 100; i++) {
+            std::cerr << *(it++) << " ";
+        }
+        std::cerr << "..." << std::endl;
+        std::cerr << "index of the first difference: " << diff - tmp_values.begin() << std::endl;
     }
-    
-    bitonic_merge<Iterator, Cmp, Up>(begin, middle, cmp);
-    bitonic_merge<Iterator, Cmp, Up>(middle, middle + k, cmp);
 }
 
-template <typename Iterator, typename Cmp = std::less<typename std::iterator_traits<Iterator>::value_type>, bool Up = true>
-void bitonic_sort(Iterator begin, Iterator end, Cmp cmp = Cmp()) {
-    auto d = end - begin;    
-    if (d <= 1) return;
-    
-    auto m = begin + d / 2;
-    bitonic_sort<Iterator, Cmp, !Up>(begin, m, cmp);
-    bitonic_sort<Iterator, Cmp, Up>(m, end, cmp);
-    bitonic_merge<Iterator, Cmp, Up>(begin, end, cmp);
+template <typename T>
+void bench_sort(const std::string& name, sort_fn<T> sort, iterator_type<T> begin, iterator_type<T> end, comparator<T> cmp = comparator<T>()) {
+    using namespace std::chrono;
+    std::vector<T> tmp_values(end - begin);
+
+    microseconds total(0);
+    for (int i = 0; i < 100; i++) {
+        std::copy(begin, end, tmp_values.begin());
+        auto start = high_resolution_clock::now();
+        sort(tmp_values.begin(), tmp_values.end(), cmp);
+        auto end = high_resolution_clock::now();
+        total += duration_cast<microseconds>(end - start);
+    }
+    std::cout << name << ": " << duration_cast<milliseconds>(total).count() << " ms" << std::endl;
 }
 
 int main(int argc, char** argv) {
-    std::vector<Thingy> values(1028*1024);
+    container_type<Thingy> values(100000);
     for (auto& v : values) v = rand();
 
     std::cout << "Testing..." << std::endl;
 
-    bitonic_sort(values.begin(), values.end());
-    if (find_difference(values.begin(), values.end()) != values.end()) {
-        std::cout << "NOT SORTED" << std::endl;
-        for (int i = 0; i < values.size() && i < 100; i++) {
-            std::cout << values[i] << " ";
-        }
-        std::cout << "..." << std::endl;
+    auto shell_sort_fn = shell_sort<iterator_type<Thingy>, std::less<Thingy> >;
+    auto bitonic_sort_fn = bitonic_sort<iterator_type<Thingy>, std::less<Thingy> >;
+    auto inplace_merge_sort_fn = inplace_merge_sort<iterator_type<Thingy>, std::less<Thingy> >;
+    auto std_sort_fn = std::sort<iterator_type<Thingy>, std::less<Thingy> >;
 
-        std::cout << find_difference(values.begin(), values.end()) - values.begin() << std::endl;
-    }
+    check_sort<Thingy>("shell_sort", shell_sort_fn, values.begin(), values.end());
+    check_sort<Thingy>("bitonic_sort", bitonic_sort_fn, values.begin(), values.end());
+    check_sort<Thingy>("inplace_merge_sort", inplace_merge_sort_fn, values.begin(), values.end());
 
     std::cout << "Benchmarking..." << std::endl;
 
-    {
-        auto start = std::chrono::high_resolution_clock::now();
-        for (int i = 0; i < 100; i++) {
-            std::sort(values.begin(), values.end());
-        }
-        auto end = std::chrono::high_resolution_clock::now();
-        std::cout << "std::sort: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << " ms" << std::endl;
-    }
-
-    {
-        auto start = std::chrono::high_resolution_clock::now();
-        for (int i = 0; i < 100; i++) {
-            bitonic_sort(values.begin(), values.end());
-        }
-        auto end = std::chrono::high_resolution_clock::now();
-        std::cout << "parallel_sort: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << " ms" << std::endl;
-    }
-
-    {
-        auto start = std::chrono::high_resolution_clock::now();
-        for (int i = 0; i < 100; i++) {
-            tbb::parallel_sort(values.begin(), values.end());
-        }
-        auto end = std::chrono::high_resolution_clock::now();
-        std::cout << "tbb::parallel_sort: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << " ms" << std::endl;
-    }
-
-    {
-        auto start = std::chrono::high_resolution_clock::now();
-        for (int i = 0; i < 100; i++) {
-            pss::parallel_stable_sort(values.begin(), values.end(), std::less<Thingy>());
-        }
-        auto end = std::chrono::high_resolution_clock::now();
-        std::cout << "pss::parallel_stable_sort: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << " ms" << std::endl;
-    }
-
-    std::vector<int> p{1, 2, 3, 4, 5, 6, 7, 8};
-    block_swap(p.begin(), p.end() - 5, p.end());
-    for (auto i : p) std::cout << i << " ";
-    std::cout << std::endl;
+    bench_sort<Thingy>("std::sort", std_sort_fn, values.begin(), values.end());
+    bench_sort<Thingy>("shell_sort", shell_sort_fn, values.begin(), values.end());
+    bench_sort<Thingy>("bitonic_sort", bitonic_sort_fn, values.begin(), values.end());
+    bench_sort<Thingy>("inplace_merge_sort", inplace_merge_sort_fn, values.begin(), values.end());
 }

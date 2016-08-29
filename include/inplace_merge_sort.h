@@ -17,20 +17,19 @@ template <typename Iterator, typename Cmp>
 void inplace_merge_sort(Iterator begin, Iterator end, Cmp cmp) {
     auto d = end - begin;
 
-    constexpr size_t simple_sort_threshold = 5000;
+    constexpr size_t simple_sort_threshold = 10000;
     if (d < simple_sort_threshold) {
-        shell_sort(begin, end, cmp);
+        std::sort(begin, end, cmp);
         return;
     }
 
     auto middle = begin + d / 2;
 
-    constexpr size_t parallel_threshold = 10000;
+    constexpr size_t parallel_threshold = 20000;
     #pragma omp taskgroup
     {
         #pragma omp task final(d < parallel_threshold) firstprivate(begin, middle, cmp)
         { detail::inplace_merge_sort(begin, middle, cmp); }
-        #pragma omp task final(d < parallel_threshold) firstprivate(middle, end, cmp)
         { detail::inplace_merge_sort(middle, end, cmp); }
     }
 

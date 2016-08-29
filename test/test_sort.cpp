@@ -3,6 +3,7 @@
 #include <chrono>
 #include <functional>
 
+#define BENCH_TBB
 #ifdef BENCH_TBB
 #include <tbb/tbb.h>
 #endif
@@ -84,7 +85,7 @@ void tbb_wrapper(iterator_type<T> begin, iterator_type<T> end, comparator<T> cmp
 #endif
 
 int main(int argc, char** argv) {
-    container_type<Thingy> values(1000000);
+    container_type<Thingy> values(100000);
     int k = 0;
     for (auto& v : values) { v = rand(); v.index = k++; }
 
@@ -105,7 +106,6 @@ int main(int argc, char** argv) {
 #ifdef BENCH_TBB
     bench_sort<Thingy>("tbb::parallel_sort", tbb_wrapper<Thingy>, values.begin(), values.end());
 #endif
-    bench_sort<Thingy>("shell_sort", shell_sort_fn, values.begin(), values.end());
     bench_sort<Thingy>("bitonic_sort", bitonic_sort_fn, values.begin(), values.end());
     bench_sort<Thingy>("inplace_merge_sort", inplace_merge_sort_fn, values.begin(), values.end());
 }

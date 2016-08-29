@@ -49,7 +49,6 @@ void inplace_merge(Iterator a, Iterator b, Iterator c, Cmp cmp) {
     constexpr size_t parallel_threshold = 10000;
     #pragma omp task final(d1 + d2 < parallel_threshold) firstprivate(a, p1, m, cmp)
     { detail::inplace_merge(a, p1, m, cmp); }
-    #pragma omp task final(d1 + d2 < parallel_threshold) firstprivate(c, p2, m, cmp)
     { detail::inplace_merge(std::next(m), p2, c, cmp); }
 }
 

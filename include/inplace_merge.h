@@ -4,6 +4,10 @@
 #include <algorithm>
 #include <iterator>
 
+#ifdef _OPENMP
+#include <omp.h>
+#endif
+
 #include "block_swap.h"
 
 namespace detail {
@@ -16,7 +20,7 @@ void inplace_merge(Iterator a, Iterator b, Iterator c, Cmp cmp) {
 
     typedef typename std::iterator_traits<Iterator>::value_type T;
     constexpr size_t simple_merge_threshold = 4096 / sizeof(T);
-    if (d1 + d2 < simple_merge_threshold) {
+    if (d1 + d2 <= simple_merge_threshold) {
         T tmp[simple_merge_threshold];
         std::merge(a, b, b, c, tmp);
         std::copy(tmp, tmp + (d1 + d2), a);
@@ -45,7 +49,7 @@ void inplace_merge(Iterator a, Iterator b, Iterator c, Cmp cmp) {
     constexpr size_t parallel_threshold = 10000;
     #pragma omp task final(d1 + d2 < parallel_threshold) firstprivate(a, p1, m, cmp)
     { detail::inplace_merge(a, p1, m, cmp); }
-    #pragma omp task final(d1 + d2 < parallel_threshold) firstprivate(a, p1, m, cmp)
+    #pragma omp task final(d1 + d2 < parallel_threshold) firstprivate(c, p2, m, cmp)
     { detail::inplace_merge(std::next(m), p2, c, cmp); }
 }
 

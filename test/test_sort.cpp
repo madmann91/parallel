@@ -3,13 +3,18 @@
 #include <chrono>
 #include <functional>
 
+#ifdef BENCH_TBB
+#include <tbb/tbb.h>
+#endif
+
 #include "inplace_merge_sort.h"
 #include "bitonic_sort.h"
 
 struct Thingy {
     int value;
+    int index;
     Thingy() {}
-    Thingy(int i) : value(i) {}
+    Thingy(int i, int j) : value(i), index(j) {}
     Thingy& operator = (int i) { value = i; return *this; }
     bool operator < (const Thingy& other) const { return value > other.value; }
     bool operator == (const Thingy& other) const { return value == other.value; }
@@ -40,13 +45,18 @@ void check_sort(const std::string& name, sort_fn<T> sort, iterator_type<T> begin
     auto diff = find_difference(tmp_values.begin(), tmp_values.end());
     if (diff != tmp_values.end()) {
         std::cerr << name << " is incorrect." << std::endl;
-        std::cerr << "first few elements: ";
-        auto it = tmp_values.begin();
-        for (int i = 0; i < 100; i++) {
-            std::cerr << *(it++) << " ";
-        }
-        std::cerr << "..." << std::endl;
         std::cerr << "index of the first difference: " << diff - tmp_values.begin() << std::endl;
+        std::cerr << "broken sequence: ";
+        auto it = std::max(diff - 10, tmp_values.begin());
+        if (it != tmp_values.begin()) std::cerr << "... ";
+        for (int i = 0; i < 20 && it != tmp_values.end(); i++, it++) {
+            if (it == diff) std::cerr << "[";
+            std::cerr << *it;
+            if (it == diff) std::cerr << "]";
+            std::cerr << " ";
+        }
+        if (it != tmp_values.end()) std::cerr << "...";
+        std::cerr << std::endl;
     }
 }
 
@@ -66,24 +76,35 @@ void bench_sort(const std::string& name, sort_fn<T> sort, iterator_type<T> begin
     std::cout << name << ": " << duration_cast<milliseconds>(total).count() << " ms" << std::endl;
 }
 
+#ifdef BENCH_TBB
+template <typename T>
+void tbb_wrapper(iterator_type<T> begin, iterator_type<T> end, comparator<T> cmp) {
+    tbb::parallel_sort<iterator_type<T>, comparator<T> >(begin, end, cmp);
+}
+#endif
+
 int main(int argc, char** argv) {
-    container_type<Thingy> values(100000);
-    for (auto& v : values) v = rand();
+    container_type<Thingy> values(1000000);
+    int k = 0;
+    for (auto& v : values) { v = rand(); v.index = k++; }
 
-    std::cout << "Testing..." << std::endl;
+    std::cout << "=========== Testing ============" << std::endl;
 
-    auto shell_sort_fn = shell_sort<iterator_type<Thingy>, std::less<Thingy> >;
-    auto bitonic_sort_fn = bitonic_sort<iterator_type<Thingy>, std::less<Thingy> >;
-    auto inplace_merge_sort_fn = inplace_merge_sort<iterator_type<Thingy>, std::less<Thingy> >;
-    auto std_sort_fn = std::sort<iterator_type<Thingy>, std::less<Thingy> >;
+    auto shell_sort_fn = shell_sort<iterator_type<Thingy>, comparator<Thingy> >;
+    auto bitonic_sort_fn = bitonic_sort<iterator_type<Thingy>, comparator<Thingy> >;
+    auto inplace_merge_sort_fn = inplace_merge_sort<iterator_type<Thingy>, comparator<Thingy> >;
+    auto std_sort_fn = std::sort<iterator_type<Thingy>, comparator<Thingy> >;
 
     check_sort<Thingy>("shell_sort", shell_sort_fn, values.begin(), values.end());
     check_sort<Thingy>("bitonic_sort", bitonic_sort_fn, values.begin(), values.end());
     check_sort<Thingy>("inplace_merge_sort", inplace_merge_sort_fn, values.begin(), values.end());
 
-    std::cout << "Benchmarking..." << std::endl;
+    std::cout << "========= Benchmarking =========" << std::endl;
 
     bench_sort<Thingy>("std::sort", std_sort_fn, values.begin(), values.end());
+#ifdef BENCH_TBB
+    bench_sort<Thingy>("tbb::parallel_sort", tbb_wrapper<Thingy>, values.begin(), values.end());
+#endif
     bench_sort<Thingy>("shell_sort", shell_sort_fn, values.begin(), values.end());
     bench_sort<Thingy>("bitonic_sort", bitonic_sort_fn, values.begin(), values.end());
     bench_sort<Thingy>("inplace_merge_sort", inplace_merge_sort_fn, values.begin(), values.end());

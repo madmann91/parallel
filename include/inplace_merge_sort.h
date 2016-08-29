@@ -4,7 +4,9 @@
 #include <algorithm>
 #include <iterator>
 
+#ifdef _OPENMP
 #include <omp.h>
+#endif
 
 #include "inplace_merge.h"
 #include "shell_sort.h"
@@ -15,7 +17,7 @@ template <typename Iterator, typename Cmp>
 void inplace_merge_sort(Iterator begin, Iterator end, Cmp cmp) {
     auto d = end - begin;
 
-    size_t simple_sort_threshold = 5000;
+    constexpr size_t simple_sort_threshold = 5000;
     if (d < simple_sort_threshold) {
         shell_sort(begin, end, cmp);
         return;
@@ -28,7 +30,7 @@ void inplace_merge_sort(Iterator begin, Iterator end, Cmp cmp) {
     {
         #pragma omp task final(d < parallel_threshold) firstprivate(begin, middle, cmp)
         { detail::inplace_merge_sort(begin, middle, cmp); }
-        #pragma omp task final(d < parallel_threshold) firstprivate(begin, middle, cmp)
+        #pragma omp task final(d < parallel_threshold) firstprivate(middle, end, cmp)
         { detail::inplace_merge_sort(middle, end, cmp); }
     }
 

@@ -1,13 +1,24 @@
 #ifndef BITONIC_SORT_H
 #define BITONIC_SORT_H
 
+#ifdef _OPENMP
+#include <omp.h>
+#endif
+
 #include "bitonic_merge.h"
 
 namespace detail {
     template <typename Iterator, typename Cmp, bool Up = true>
     void bitonic_sort(Iterator begin, Iterator end, Cmp cmp = Cmp()) {
-        auto d = end - begin;    
+        auto d = end - begin;
         if (d <= 1) return;
+
+        typedef typename std::iterator_traits<Iterator>::value_type T;
+        constexpr size_t simple_sort_threshold = 5000;
+        if (d < simple_sort_threshold) {
+            shell_sort(begin, end, [=] (const T& a, const T& b) { return cmp(a, b) == Up; });
+            return;
+        }
         
         auto middle = begin + d / 2;
         constexpr size_t parallel_threshold = 10000;
@@ -15,7 +26,7 @@ namespace detail {
         {
             #pragma omp task final(d < parallel_threshold) firstprivate(begin, middle, cmp)
             { detail::bitonic_sort<Iterator, Cmp, !Up>(begin, middle, cmp); }
-            #pragma omp task final(d < parallel_threshold) firstprivate(begin, middle, cmp)
+            #pragma omp task final(d < parallel_threshold) firstprivate(middle, end, cmp)
             { detail::bitonic_sort<Iterator, Cmp, Up>(middle, end, cmp); }
         }
 

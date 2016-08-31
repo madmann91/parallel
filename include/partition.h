@@ -11,7 +11,6 @@ namespace detail {
     template <typename Iterator, typename Pred>
     Iterator partition(Iterator begin, Iterator end, Pred pred) {
         auto d = end - begin;
-        if (d <= 1) return begin;
 
         constexpr size_t simple_partition_threshold = 8192;
         if (d <= simple_partition_threshold) {

@@ -19,7 +19,7 @@ namespace detail {
 
     template <typename Iterator, typename Mask>
     void inplace_radix_sort(Iterator begin, Iterator end, int bits) {
-        constexpr size_t simple_sort_threshold = 8;
+        constexpr size_t simple_sort_threshold = 32;
         if (end - begin <= simple_sort_threshold) {
             insertion_sort(begin, end);
             return;

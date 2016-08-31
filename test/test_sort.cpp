@@ -81,7 +81,7 @@ void bench_sort(const std::string& name, sort_fn<T> sort, iterator_type<T> begin
     std::vector<T> tmp_values(end - begin);
 
     microseconds total(0);
-    for (int i = 0; i < 100; i++) {
+    for (int i = 0; i < 1000; i++) {
         std::copy(begin, end, tmp_values.begin());
         auto start = high_resolution_clock::now();
         sort(tmp_values.begin(), tmp_values.end());
@@ -107,7 +107,7 @@ Iterator pn(Iterator begin, Iterator end, Pred pred) {
 }
 
 int main(int argc, char** argv) {
-    container_type<Thingy> values(1000000);
+    container_type<Thingy> values(100000);
     int k = 0;
     for (auto& v : values) { v = rand(); v.index = k++; }
 

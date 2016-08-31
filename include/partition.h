@@ -15,7 +15,7 @@ namespace detail {
 
         constexpr size_t simple_partition_threshold = 8192;
         if (d <= simple_partition_threshold) {
-            return std::partition(begin, end, pred);
+            return std::stable_partition(begin, end, pred);
         }
 
         Iterator it1, it2, middle = begin + d / 2;
@@ -33,6 +33,7 @@ namespace detail {
     }
 }
 
+/// Partitions an array into two disjoint sets based on a predicate. This algorithm is stable.
 template <typename Iterator, typename Pred>
 Iterator partition(Iterator begin, Iterator end, Pred pred) {
     Iterator it;

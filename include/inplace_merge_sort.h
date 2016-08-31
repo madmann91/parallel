@@ -19,7 +19,7 @@ void inplace_merge_sort(Iterator begin, Iterator end, Cmp cmp) {
 
     constexpr size_t simple_sort_threshold = 8192;
     if (d < simple_sort_threshold) {
-        std::sort(begin, end, cmp);
+        std::stable_sort(begin, end, cmp);
         return;
     }
 
@@ -38,7 +38,7 @@ void inplace_merge_sort(Iterator begin, Iterator end, Cmp cmp) {
 
 } // namespace detail
 
-/// Parallel in-place merge sort.
+/// Parallel in-place merge sort. This algorithm is stable.
 template <typename Iterator, typename Cmp = std::less<typename std::iterator_traits<Iterator>::value_type> >
 void inplace_merge_sort(Iterator begin, Iterator end, Cmp cmp = Cmp()) {
     #pragma omp parallel if(omp_get_level() == 0)

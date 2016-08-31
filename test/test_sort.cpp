@@ -44,6 +44,15 @@ template <typename T>
 void check_sort(const std::string& name, sort_fn<T> sort, iterator_type<T> begin, iterator_type<T> end) {
     std::vector<T> tmp_values(begin, end);
     sort(tmp_values.begin(), tmp_values.end());
+
+    bool stable = true;
+    for (auto it1 = tmp_values.begin(), it2 = tmp_values.begin() + 1; it2 != tmp_values.end(); ++it1, ++it2) {
+        if (it1->value == it2->value && it1->index > it2->index) {
+            stable = false;
+            break;
+        }
+    }
+
     auto diff = find_difference(tmp_values.begin(), tmp_values.end());
     if (diff != tmp_values.end()) {
         std::cerr << name << " is incorrect." << std::endl;
@@ -60,7 +69,9 @@ void check_sort(const std::string& name, sort_fn<T> sort, iterator_type<T> begin
         if (it != tmp_values.end()) std::cerr << "...";
         std::cerr << std::endl;
     } else {
-        std::cout << name << " has been tested successfully." << std::endl;
+        std::cout << name << " has been tested successfully, and ";
+        if (stable) std::cout << "seems to be stable." << std::endl;
+        else          std::cout << "is instable." << std::endl;
     }
 }
 
@@ -80,16 +91,31 @@ void bench_sort(const std::string& name, sort_fn<T> sort, iterator_type<T> begin
     std::cout << name << ": " << duration_cast<milliseconds>(total).count() << " ms" << std::endl;
 }
 
+template <typename Iterator, typename Pred>
+Iterator pn(Iterator begin, Iterator end, Pred pred) {
+    size_t count = 0;
+    for (auto it = begin; it != end; ++it) count += pred(*it);
+
+    for (auto it1 = begin, it2 = begin + count; it2 != end;) {
+        for (auto it = begin; it != end; it++) std::cout << *it << " ";
+        std::cout << std::endl;
+
+        if (pred(*it1)) ++it1;
+        else std::iter_swap(it1, it2++);
+    }
+    return begin + count;
+}
+
 int main(int argc, char** argv) {
-    container_type<Thingy> values(100000);
+    container_type<Thingy> values(1000000);
     int k = 0;
-    for (auto& v : values) { v = rand() % 4096; v.index = k++; }
+    for (auto& v : values) { v = rand(); v.index = k++; }
 
     std::cout << "=========== Testing ============" << std::endl;
 
     auto shell_sort_fn         = [] (iterator_type<Thingy> begin, iterator_type<Thingy> end) { shell_sort(begin, end); };
     auto inplace_merge_sort_fn = [] (iterator_type<Thingy> begin, iterator_type<Thingy> end) { inplace_merge_sort(begin, end); };
-    auto inplace_radix_sort_fn = [] (iterator_type<Thingy> begin, iterator_type<Thingy> end) { inplace_radix_sort<iterator_type<Thingy>, int>(begin, end, 12); };
+    auto inplace_radix_sort_fn = [] (iterator_type<Thingy> begin, iterator_type<Thingy> end) { inplace_radix_sort<iterator_type<Thingy>, int>(begin, end); };
     auto std_sort_fn           = [] (iterator_type<Thingy> begin, iterator_type<Thingy> end) { std::sort(begin, end); };
 #ifdef BENCH_TBB
     auto tbb_parallel_sort_fn  = [] (iterator_type<Thingy> begin, iterator_type<Thingy> end) { tbb::parallel_sort(begin, end); };

@@ -30,7 +30,7 @@ void inplace_merge(Iterator a, Iterator b, Iterator c, Cmp cmp) {
     Iterator m, p1, p2;
     if (d1 > d2) {
         auto k = a + d1 / 2;
-        auto it = std::upper_bound(b, c, *k, cmp);
+        auto it = std::lower_bound(b, c, *k, cmp);
 
         m = k + (it - b);
         p1 = k;
@@ -54,7 +54,7 @@ void inplace_merge(Iterator a, Iterator b, Iterator c, Cmp cmp) {
 
 } // namespace detail
 
-/// Parallel in-place merge algorithm.
+/// Parallel in-place merge algorithm. This algorithm is stable.
 template <typename Iterator, typename Cmp = std::less<typename std::iterator_traits<Iterator>::value_type> >
 void inplace_merge(Iterator a, Iterator b, Iterator c, Cmp cmp = Cmp()) {
     #pragma omp parallel if(omp_get_level() == 0)

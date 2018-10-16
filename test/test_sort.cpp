@@ -125,6 +125,9 @@ int main(int argc, char** argv) {
     check_sort<Thingy>("inplace_radix_sort", inplace_radix_sort_fn, values.begin(), values.end());
 
     std::cout << "========= Benchmarking =========" << std::endl;
+#ifndef NDEBUG
+    std::cout << "Warning: built in debug mode. Results will be inaccurate (set CMAKE_BUILD_TYPE to Release)." << std::endl;
+#endif
 
     bench_sort<Thingy>("std::sort", std_sort_fn, values.begin(), values.end());
 #ifdef BENCH_TBB

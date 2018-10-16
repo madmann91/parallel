@@ -32,8 +32,9 @@ namespace detail {
         auto it = detail::partition(begin, end, [=] (const T& t) { return (t & mask) == 0; });
 
         constexpr size_t parallel_threshold = 4096;
-        #pragma omp task final(end - it < parallel_threshold)
+        #pragma omp task final(end - it < parallel_threshold) default(none) firstprivate(it, end, bits)
         { detail::inplace_radix_sort<Iterator, Mask>(it, end, bits - 1); }
+        #pragma omp task final(it - begin < parallel_threshold) default(none) firstprivate(begin, it, bits)
         { detail::inplace_radix_sort<Iterator, Mask>(begin, it, bits - 1); }
     }
 }

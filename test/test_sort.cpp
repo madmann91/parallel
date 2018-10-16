@@ -3,7 +3,6 @@
 #include <chrono>
 #include <functional>
 
-#define BENCH_TBB
 #ifdef BENCH_TBB
 #include <tbb/tbb.h>
 #endif
@@ -81,7 +80,7 @@ void bench_sort(const std::string& name, sort_fn<T> sort, iterator_type<T> begin
     std::vector<T> tmp_values(end - begin);
 
     microseconds total(0);
-    for (int i = 0; i < 1000; i++) {
+    for (int i = 0; i < 100; i++) {
         std::copy(begin, end, tmp_values.begin());
         auto start = high_resolution_clock::now();
         sort(tmp_values.begin(), tmp_values.end());

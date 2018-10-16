@@ -22,8 +22,9 @@ namespace detail {
         constexpr size_t parallel_threshold = 16384;
         #pragma omp taskgroup
         {
-            #pragma omp task shared(it1) if(d >= parallel_threshold)
+            #pragma omp task final(middle - begin < parallel_threshold) default(none) firstprivate(begin, middle, pred) shared(it1)
             { it1 = detail::partition(begin, middle, pred); }
+            #pragma omp task final(end - middle < parallel_threshold) default(none) firstprivate(middle, end, pred) shared(it2)
             { it2 = detail::partition(middle, end, pred); }
         }
 
